@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知行AI 三维比价系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
+    <style>
+        body {
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .main-container {
+            display: flex;
+            max-width: 1600px;
+            margin: 0 auto;
+            gap: 20px;
+        }
+        .content-container {
+            flex: 1;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        .data-list-container {
+            width: 300px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        .data-list-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+            text-align: center;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #2196F3;
+        }
+        .data-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: calc(100vh - 150px);
+            overflow-y: auto;
+        }
+        .data-list li {
+            padding: 10px 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+        }
+        .data-list li:hover {
+            background-color: #f0f7ff;
+        }
+        .data-list li:active {
+            background-color: #e3f2fd;
+        }
+        .data-list li .file-icon {
+            margin-right: 10px;
+            color: #2196F3;
+        }
+        .data-list li .file-name {
+            flex: 1;
+        }
+        .data-list li .file-date {
+            font-size: 12px;
+            color: #666;
+        }
+        .data-list-description {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            padding: 5px;
+            background-color: #f8f8f8;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 6px;
+        }
+        .control-group {
+            flex: 1;
+            min-width: 250px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select, input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+            box-sizing: border-box;
+        }
+        .search-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .search-btn {
+            background-color: #2196F3;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .search-btn:hover {
+            background-color: #0b7dda;
+        }
+        .checkbox-control {
+            display: flex;
+            align-items: center;
+            margin-top: 15px;
+        }
+        .checkbox-control input {
+            margin-right: 8px;
+        }
+        .file-upload {
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            background-color: #f0f7ff;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        .upload-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        .upload-btn:hover {
+            background-color: #45a049;
+        }
+        .chart-container {
+            position: relative;
+            height: 70vh;
+            margin-top: 20px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 10px;
+            background-color: #fcfcfc;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            overflow-x: auto;
+            display: block;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .data-table th {
+            background-color: #f2f2f2;
+            position: sticky;
+            top: 0;
+            cursor: pointer;
+            user-select: none;
+        }
+        .data-table th:hover {
+            background-color: #e5e5e5;
+        }
+        .data-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .data-table tr:hover {
+            background-color: #f1f1f1;
+        }
+        .highlighted-row {
+            background-color: #fffacd !important;
+        }
+        .sort-icon {
+            display: inline-block;
+            width: 0;
+            height: 0;
+            margin-left: 5px;
+            vertical-align: middle;
+        }
+        .sort-icon.asc {
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 5px solid #333;
+        }
+        .sort-icon.desc {
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 5px solid #333;
+        }
+        .system-title {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .system-title h1 {
+            margin: 0;
+            margin-bottom: 0;
+            background: linear-gradient(45deg, #1976d2, #4CAF50);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: bold;
+        }
+        .search-result {
+            margin-top: 5px;
+            font-size: 14px;
+            color: #666;
+        }
+        .loading-indicator {
+            display: none;
+            text-align: center;
+            margin: 10px 0;
+            font-style: italic;
+            color: #666;
+        }
+        .loading-indicator.active {
+            display: block;
+        }
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+            }
+            .chart-container {
+                height: 50vh;
+            }
+            .search-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="content-container">
+            <div class="container">
+                <div class="system-title">
+                    <h1>知行AI 三维比价系统</h1>
+                </div>
+                
+                <div class="file-upload">
+                    <label for="fileInput">上传文件 (支持Excel和CSV格式):</label>
+                    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" />
+                    <button class="upload-btn" onclick="processFile()">处理数据</button>
+                </div>
+                
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="xAxis">选择X轴数据:</label>
+                        <select id="xAxis" onchange="updateChart()">
+                            <!-- 选项将动态生成 -->
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="yAxis">选择Y轴数据:</label>
+                        <select id="yAxis" onchange="updateChart()">
+                            <!-- 选项将动态生成 -->
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="bubbleSize">气泡大小表示:</label>
+                        <select id="bubbleSize" onchange="updateChart()">
+                            <!-- 选项将动态生成 -->
+                        </select>
+                        <div class="checkbox-control">
+                            <input type="checkbox" id="showLabels" checked onchange="updateChart()">
+                            <label for="showLabels">显示所有股票名称</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="search-group">
+                    <label for="searchStock" style="min-width: 80px;">搜索股票:</label>
+                    <input type="text" id="searchStock" placeholder="输入股票名称或代码">
+                    <button class="search-btn" onclick="searchStock()">搜索</button>
+                    <div class="search-result" id="searchResult"></div>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="stockChart"></canvas>
+                </div>
+                
+                <div style="overflow-x: auto; margin-top: 30px;">
+                    <table class="data-table" id="dataTable">
+                        <thead id="tableHeader">
+                            <!-- 表头将动态生成 -->
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- 数据将动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="data-list-container">
+            <div class="data-list-title">知行AI用户专属数据列表</div>
+            <div class="data-list-description">双击加载数据表</div>
+            <div id="dataListLoading" class="loading-indicator">正在加载数据列表...</div>
+            <ul class="data-list" id="userDataList">
+                <!-- 数据列表项将通过JavaScript动态添加 -->
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let stockData = [];
+        let myChart = null;
+        let columns = [];
+        let highlightedStock = null;
+        let sortConfig = {
+            column: null,
+            direction: 'asc'
+        };
+        
+        // GitHub仓库配置
+        const repoOwner = 'YOUR_GITHUB_USERNAME'; // 替换为您的GitHub用户名
+        const repoName = 'YOUR_REPO_NAME';        // 替换为您的仓库名
+        const dataFolder = 'data';                // 数据文件存放的文件夹路径
+
+        // 配置数据文件的信息 (可以在GitHub上添加这些文件)
+        const dataFiles = [
+            // 这里会自动从仓库中读取
+        ];
+        
+        // 默认数据
+        const defaultData = [
+            {代码: "002536", 名称: "飞龙股份", 概率: 86.05, 赔率: 102.27, 凯利仓位: 77.35, 半凯利仓位: 38.67, 止损价: 6.13, 止损比例: 58.36, 盈亏比: 1.60},
+            {代码: "603286", 名称: "日盈电子", 概率: 67.50, 赔率: 57.47, 凯利仓位: 42.03, 半凯利仓位: 21.02, 止损价: 16.07, 止损比例: 40.54, 盈亏比: 1.28},
+            {代码: "000678", 名称: "襄阳轴承", 概率: 73.77, 赔率: 74.56, 凯利仓位: 53.52, 半凯利仓位: 26.76, 止损价: 5.41, 止损比例: 54.42, 盈亏比: 1.30},
+            {代码: "603009", 名称: "北特科技", 概率: 62.50, 赔率: 90.99, 凯利仓位: 29.45, 半凯利仓位: 14.73, 止损价: 9.60, 止损比例: 75.86, 盈亏比: 1.13},
+            {代码: "301459", 名称: "丰茂股份", 概率: 57.14, 赔率: 39.84, 凯利仓位: 14.17, 半凯利仓位: 7.08, 止损价: 31.70, 止损比例: 34.59, 盈亏比: 1.00},
+            {代码: "301225", 名称: "恒勃股份", 概率: 55.56, 赔率: 32.27, 凯利仓位: -12.00, 半凯利仓位: -6.00, 止损价: 20.50, 止损比例: 46.87, 盈亏比: 0.66},
+            {代码: "603758", 名称: "秦安股份", 概率: 50.00, 赔率: 29.94, 凯利仓位: -25.58, 半凯利仓位: -12.79, 止损价: 6.31, 止损比例: 41.62, 盈亏比: 0.66},
+            {代码: "600699", 名称: "均胜电子", 概率: 60.00, 赔率: 45.00, 凯利仓位: -18.03, 半凯利仓位: -9.01, 止损价: 15.21, 止损比例: 1.10, 盈亏比: 0.51},
+            {代码: "002662", 名称: "京威股份", 概率: 54.00, 赔率: 58.66, 凯利仓位: 87.47, 半凯利仓位: 43.73, 止损价: 3.53, 止损比例: -2.10, 盈亏比: -1.37},
+            {代码: "002406", 名称: "远东传动", 概率: 61.36, 赔率: 46.82, 凯利仓位: 21.50, 半凯利仓位: 10.75, 止损价: 5.01, 止损比例: 27.20, 盈亏比: 0.97},
+            {代码: "301607", 名称: "富特科技", 概率: 0.00, 赔率: 8.23, 凯利仓位: -344.37, 半凯利仓位: -172.18, 止损价: 30.05, 止损比例: 27.63, 盈亏比: 0.29},
+            {代码: "001380", 名称: "华纬科技", 概率: 85.71, 赔率: 68.32, 凯利仓位: 75.26, 半凯利仓位: 37.63, 止损价: 14.77, 止损比例: 46.73, 盈亏比: 1.37},
+            {代码: "002328", 名称: "新朋股份", 概率: 70.21, 赔率: 41.64, 凯利仓位: 55.57, 半凯利仓位: 27.79, 止损价: 3.58, 止损比例: 31.60, 盈亏比: 2.03},
+            {代码: "001282", 名称: "三联锻造", 概率: 50.00, 赔率: 34.42, 凯利仓位: -5.99, 半凯利仓位: -2.99, 止损价: 16.24, 止损比例: 29.95, 盈亏比: 0.89},
+            {代码: "002547", 名称: "春兴精工", 概率: 91.43, 赔率: 143.38, 凯利仓位: 91.11, 半凯利仓位: 45.56, 止损价: 4.27, 止损比例: -5.35, 盈亏比: 27.09}
+        ];
+
+        // 初始化页面
+        window.onload = function() {
+            stockData = defaultData;
+            initializeData();
+            
+            // 为搜索框添加回车键事件监听
+            document.getElementById('searchStock').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchStock();
+                }
+            });
+
+            // 加载GitHub数据文件列表
+            loadGitHubDataFiles();
+        };
+
+        // 加载GitHub仓库中的数据文件列表
+        async function loadGitHubDataFiles() {
+            try {
+                showDataListLoading(true);
+                
+                // 获取仓库内容
+                const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${dataFolder}`);
+                
+                if (!response.ok) {
+                    throw new Error(`GitHub API返回错误: ${response.status}`);
+                }
+                
+                const files = await response.json();
+                
+                // 筛选出CSV和Excel文件
+                const dataFiles = files.filter(file => {
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    return ext === 'csv' || ext === 'xlsx' || ext === 'xls';
+                });
+                
+                // 按修改时间对文件进行排序（需要额外请求获取提交信息）
+                const fileDetailsPromises = dataFiles.map(async file => {
+                    try {
+                        const commitsResponse = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/commits?path=${file.path}&page=1&per_page=1`);
+                        const commits = await commitsResponse.json();
+                        
+                        // 如果有提交历史，使用最新提交的日期
+                        let lastModified = new Date();
+                        let commitMessage = '';
+                        
+                        if (commits && commits.length > 0) {
+                            lastModified = new Date(commits[0].commit.committer.date);
+                            commitMessage = commits[0].commit.message;
+                        }
+                        
+                        return {
+                            name: file.name,
+                            path: file.path,
+                            download_url: file.download_url,
+                            lastModified: lastModified,
+                            commitMessage: commitMessage
+                        };
+                    } catch (error) {
+                        console.error(`获取文件 ${file.name} 的提交信息失败:`, error);
+                        return {
+                            name: file.name,
+                            path: file.path,
+                            download_url: file.download_url,
+                            lastModified: new Date(0), // 使用最早的日期
+                            commitMessage: ''
+                        };
+                    }
+                });
+                
+                const fileDetails = await Promise.all(fileDetailsPromises);
+                
+                // 按最后修改日期排序（最新的在最前面）
+                fileDetails.sort((a, b) => b.lastModified - a.lastModified);
+                
+                updateDataFilesList(fileDetails);
+            } catch (error) {
+                console.error('加载GitHub数据文件失败:', error);
+                document.getElementById('userDataList').innerHTML = `
+                    <li style="color: #f44336;">
+                        <span class="file-icon">❌</span>
+                        <span class="file-name">加载数据文件列表失败</span>
+                    </li>
+                `;
+            } finally {
+                showDataListLoading(false);
+            }
+        }
+
+        // 更新数据文件列表
+        function updateDataFilesList(files) {
+            const listElement = document.getElementById('userDataList');
+            listElement.innerHTML = '';
+
+            if (files.length === 0) {
+                listElement.innerHTML = `
+                    <li style="color: #666; font-style: italic;">
+                        <span class="file-icon">📂</span>
+                        <span class="file-name">暂无数据文件</span>
+                    </li>
+                `;
+                return;
+            }
+
+            files.forEach(file => {
+                const li = document.createElement('li');
+                
+                // 根据文件扩展名显示不同的图标
+                const fileExt = file.name.split('.').pop().toLowerCase();
+                let fileIcon = '📄';
+                
+                if (fileExt === 'csv') {
+                    fileIcon = '📊';
+                } else if (fileExt === 'xlsx' || fileExt === 'xls') {
+                    fileIcon = '📈';
+                }
+                
+                // 提取文件名（去掉扩展名和日期前缀）
+                let displayName = file.name;
+                
+                // 提取文件标题（从提交信息中）
+                let fileDescription = '';
+                if (file.commitMessage) {
+                    // 从提交信息中提取描述（如果有）
+                    const descMatch = file.commitMessage.match(/^.*?:\s*(.*?)$/);
+                    if (descMatch && descMatch[1]) {
+                        fileDescription = descMatch[1];
+                    } else {
+                        fileDescription = file.commitMessage;
+                    }
+                }
+                
+                // 格式化日期
+                const formattedDate = file.lastModified.toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                li.innerHTML = `
+                    <span class="file-icon">${fileIcon}</span>
+                    <span class="file-name" title="${fileDescription || displayName}">
+                        ${displayName}
+                        ${fileDescription ? `<small style="display:block;color:#666;font-size:90%;">${fileDescription}</small>` : ''}
+                    </span>
+                    <span class="file-date">${formattedDate}</span>
+                `;
+                
+                // 添加双击事件处理程序
+                li.addEventListener('dblclick', () => loadDataFromGitHub(file.download_url, fileExt));
+                
+                listElement.appendChild(li);
+            });
+        }
+
+        // 显示或隐藏数据列表加载指示器
+        function showDataListLoading(show) {
+            const loadingElement = document.getElementById('dataListLoading');
+            if (show) {
+                loadingElement.classList.add('active');
+            } else {
+                loadingElement.classList.remove('active');
+            }
+        }
+
+        // 从GitHub下载并加载数据文件
+        async function loadDataFromGitHub(fileUrl, fileType) {
+            try {
+                showDataListLoading(true);
+                
+                const response = await fetch(fileUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`下载文件失败: ${response.status}`);
+                }
+                
+                // 根据文件类型处理数据
+                if (fileType === 'csv') {
+                    const csvText = await response.text();
+                    processRemoteCsvData(csvText);
+                } else if (fileType === 'xlsx' || fileType === 'xls') {
+                    const arrayBuffer = await response.arrayBuffer();
+                    processRemoteExcelData(arrayBuffer);
+                } else {
+                    alert('不支持的文件格式');
+                }
+            } catch (error) {
+                console.error('加载数据文件失败:', error);
+                alert('加载数据文件失败: ' + error.message);
+            } finally {
+                showDataListLoading(false);
+            }
+        }
+
+        // 处理远程CSV数据
+        function processRemoteCsvData(csvText) {
+            Papa.parse(csvText, {
+                header: true,
+                dynamicTyping: true,
+                complete: function(results) {
+                    if (results.data && results.data.length > 0) {
+                        // 过滤掉空行
+                        const filteredData = results.data.filter(row => 
+                            Object.keys(row).length > 0 && 
+                            Object.values(row).some(val => val !== null && val !== '')
+                        );
+                        
+                        if (filteredData.length > 0) {
+                            // 检查数据格式
+                            if ('名称' in filteredData[0]) {
+                                stockData = filteredData;
+                                initializeData();
+                            } else {
+                                alert('文件格式不正确。请确保文件包含必要的列（如名称等）。');
+                            }
+                        } else {
+                            alert('文件数据为空或无效。');
+                        }
+                    } else {
+                        alert('文件数据为空。');
+                    }
+                },
+                error: function(error) {
+                    console.error('处理CSV数据时出错:', error);
+                    alert('处理CSV数据时出错: ' + error.message);
+                }
+            });
+        }
+
+        // 处理远程Excel数据
+        function processRemoteExcelData(arrayBuffer) {
+            try {
+                const data = new Uint8Array(arrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                // 获取第一个工作表
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                
+                // 转换为JSON
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                
+                // 检查数据格式
+                if (jsonData.length > 0 && '名称' in jsonData[0]) {
+                    stockData = jsonData;
+                    initializeData();
+                } else {
+                    alert('文件格式不正确。请确保文件包含必要的列（如名称等）。');
+                }
+            } catch (error) {
+                console.error('处理Excel数据时出错:', error);
+                alert('处理Excel数据时出错: ' + error.message);
+            }
+        }
+
+        // 初始化数据和界面
+        function initializeData() {
+            // 提取列信息
+            if (stockData.length > 0) {
+                columns = Object.keys(stockData[0]);
+            }
+            
+            // 确保所有数据为数字，并且代码始终为字符串
+            stockData = stockData.map(item => {
+                const newItem = {...item};
+                // 确保代码是字符串类型
+                if (newItem.代码 !== undefined) {
+                    newItem.代码 = String(newItem.代码);
+                }
+                
+                for (const key in newItem) {
+                    if (key !== '代码' && key !== '名称' && typeof newItem[key] === 'string') {
+                        // 移除百分号并转换为数字
+                        if (newItem[key].endsWith('%')) {
+                            newItem[key] = parseFloat(newItem[key].replace('%', ''));
+                        } else {
+                            const parsed = parseFloat(newItem[key]);
+                            if (!isNaN(parsed)) {
+                                newItem[key] = parsed;
+                            }
+                        }
+                    }
+                }
+                return newItem;
+            });
+            
+            // 初始化下拉选择框
+            initializeSelects();
+            
+            // 初始化表格
+            initializeTable();
+            
+            // 更新图表
+            updateChart();
+            
+            // 重置高亮状态
+            highlightedStock = null;
+        }
+
+        // 初始化选择下拉框
+        function initializeSelects() {
+            const xAxisSelect = document.getElementById('xAxis');
+            const yAxisSelect = document.getElementById('yAxis');
+            const bubbleSizeSelect = document.getElementById('bubbleSize');
+            
+            // 清空现有选项
+            xAxisSelect.innerHTML = '';
+            yAxisSelect.innerHTML = '';
+            bubbleSizeSelect.innerHTML = '';
+            
+            // 添加选项（排除代码和名称）
+            const numericColumns = columns.filter(col => col !== '代码' && col !== '名称');
+            
+            numericColumns.forEach((col, index) => {
+                xAxisSelect.add(new Option(col, col, index === 0, index === 0));
+                yAxisSelect.add(new Option(col, col, index === 1, index === 1));
+                bubbleSizeSelect.add(new Option(col, col, index === 2, index === 2));
+            });
+        }
+
+        // 初始化表格
+        function initializeTable() {
+            // 创建表头
+            const tableHeader = document.getElementById('tableHeader');
+            tableHeader.innerHTML = '';
+            
+            const headerRow = document.createElement('tr');
+            
+            columns.forEach(column => {
+                const th = document.createElement('th');
+                th.textContent = column;
+                th.onclick = () => sortTable(column);
+                
+                // 添加排序图标容器
+                const sortIcon = document.createElement('span');
+                sortIcon.className = 'sort-icon';
+                if (sortConfig.column === column) {
+                    sortIcon.classList.add(sortConfig.direction);
+                }
+                th.appendChild(sortIcon);
+                
+                headerRow.appendChild(th);
+            });
+            
+            tableHeader.appendChild(headerRow);
+            
+            // 更新表格数据
+            updateTable();
+        }
+
+        // 搜索股票并高亮显示
+        function searchStock() {
+            const searchTerm = document.getElementById('searchStock').value.trim().toLowerCase();
+            const searchResult = document.getElementById('searchResult');
+            
+            if (!searchTerm) {
+                searchResult.textContent = '';
+                // 清除高亮状态
+                highlightedStock = null;
+                updateTable();
+                updateChart();
+                return;
+            }
+            
+            // 查找匹配的股票
+            const matchedStocks = stockData.filter(stock => {
+                // 安全地转换为字符串并比较
+                const stockName = stock.名称 ? String(stock.名称).toLowerCase() : '';
+                const stockCode = stock.代码 ? String(stock.代码).toLowerCase() : '';
+                
+                return stockName.includes(searchTerm) || stockCode.includes(searchTerm);
+            });
+            
+            if (matchedStocks.length === 0) {
+                searchResult.textContent = '未找到匹配的股票';
+                // 清除高亮状态
+                highlightedStock = null;
+            } else if (matchedStocks.length === 1) {
+                // 单个匹配，高亮显示
+                highlightedStock = matchedStocks[0];
+                searchResult.textContent = `已找到: ${highlightedStock.名称} (${highlightedStock.代码})`;
+                
+                // 滚动到表格中的对应行
+                scrollToTableRow(highlightedStock);
+            } else {
+                // 多个匹配，显示第一个并提示
+                highlightedStock = matchedStocks[0];
+                searchResult.textContent = `找到${matchedStocks.length}个匹配结果，显示第一个: ${highlightedStock.名称} (${highlightedStock.代码})`;
+                
+                // 滚动到表格中的对应行
+                scrollToTableRow(highlightedStock);
+            }
+            
+            // 更新表格和图表高亮
+            updateTable();
+            updateChart();
+        }
+
+        // 滚动到表格中的指定行
+        function scrollToTableRow(stock) {
+            const tableBody = document.getElementById('tableBody');
+            const rows = tableBody.getElementsByTagName('tr');
+            
+            for (let i = 0; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName('td');
+                if (cells.length > 1) {
+                    const code = cells[0].textContent;
+                    const name = cells[1].textContent;
+                    
+                    if ((stock.代码 && code === stock.代码) || 
+                        (stock.名称 && name === stock.名称)) {
+                        // 滚动到该行
+                        rows[i].scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center'
+                        });
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 处理上传的文件
+        function processFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('请选择文件');
+                return;
+            }
+            
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            
+            if (fileExtension === 'csv') {
+                // 处理CSV文件
+                processCsvFile(file);
+            } else if (['xlsx', 'xls'].includes(fileExtension)) {
+                // 处理Excel文件
+                processExcelFile(file);
+            } else {
+                alert('不支持的文件格式。请上传CSV或Excel文件。');
+            }
+        }
+
+        // 处理CSV文件
+        function processCsvFile(file) {
+            Papa.parse(file, {
+                header: true,
+                dynamicTyping: true, // 自动转换数字类型
+                complete: function(results) {
+                    if (results.data && results.data.length > 0) {
+                        // 过滤掉空行
+                        const filteredData = results.data.filter(row => 
+                            Object.keys(row).length > 0 && 
+                            Object.values(row).some(val => val !== null && val !== '')
+                        );
+                        
+                        if (filteredData.length > 0) {
+                            // 检查数据格式
+                            if ('名称' in filteredData[0]) {
+                                stockData = filteredData;
+                                initializeData();
+                            } else {
+                                alert('文件格式不正确。请确保文件包含必要的列（如名称等）。');
+                            }
+                        } else {
+                            alert('文件数据为空或无效。');
+                        }
+                    } else {
+                        alert('文件数据为空。');
+                    }
+                },
+                error: function(error) {
+                    console.error('处理CSV文件时出错:', error);
+                    alert('处理CSV文件时出错: ' + error.message);
+                }
+            });
+        }
+
+        // 处理Excel文件
+        function processExcelFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // 获取第一个工作表
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    
+                    // 转换为JSON
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    // 检查数据格式
+                    if (jsonData.length > 0 && '名称' in jsonData[0]) {
+                        stockData = jsonData;
+                        initializeData();
+                    } else {
+                        alert('文件格式不正确。请确保文件包含必要的列（如名称等）。');
+                    }
+                } catch (error) {
+                    console.error('处理Excel文件时出错:', error);
+                    alert('处理Excel文件时出错: ' + error.message);
+                }
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 更新数据表格
+        function updateTable() {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+            
+            stockData.forEach(stock => {
+                const row = document.createElement('tr');
+                
+                // 检查是否是高亮的股票
+                if (highlightedStock && 
+                    ((highlightedStock.代码 && stock.代码 === highlightedStock.代码) || 
+                     (highlightedStock.名称 && stock.名称 === highlightedStock.名称))) {
+                    row.classList.add('highlighted-row');
+                }
+                
+                columns.forEach(column => {
+                    const cell = document.createElement('td');
+                    const value = stock[column];
+                    
+                    // 对于数值，保留两位小数
+                    if (typeof value === 'number') {
+                        cell.textContent = value.toFixed(2);
+                    } else {
+                        cell.textContent = value || '';
+                    }
+                    
+                    row.appendChild(cell);
+                });
+                
+                tableBody.appendChild(row);
+            });
+        }
+
+        // 表格排序
+        function sortTable(column) {
+            // 如果已经按这列排序，切换方向
+            if (sortConfig.column === column) {
+                sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortConfig.column = column;
+                sortConfig.direction = 'asc';
+            }
+            
+            // 排序数据
+            stockData.sort((a, b) => {
+                let valueA = a[column];
+                let valueB = b[column];
+                
+                // 转换为数字进行比较（如果可能）
+                if (!isNaN(valueA) && !isNaN(valueB)) {
+                    valueA = Number(valueA);
+                    valueB = Number(valueB);
+                } else {
+                    // 确保是字符串比较
+                    valueA = String(valueA || '');
+                    valueB = String(valueB || '');
+                }
+                
+                // 比较
+                if (valueA < valueB) {
+                    return sortConfig.direction === 'asc' ? -1 : 1;
+                }
+                if (valueA > valueB) {
+                    return sortConfig.direction === 'asc' ? 1 : -1;
+                }
+                return 0;
+            });
+            
+            // 更新表格和图表
+            initializeTable();
+            updateChart();
+        }
+
+        // 更新图表
+        function updateChart() {
+            const xAxis = document.getElementById('xAxis').value;
+            const yAxis = document.getElementById('yAxis').value;
+            const bubbleSize = document.getElementById('bubbleSize').value;
+            const showLabels = document.getElementById('showLabels').checked;
+            
+            // 计算气泡大小的归一化因子
+            const bubbleValues = stockData.map(stock => Math.abs(stock[bubbleSize] || 0));
+            const maxBubbleValue = Math.max(...bubbleValues) || 1;
+            
+            // 获取画布上下文
+            const ctx = document.getElementById('stockChart').getContext('2d');
+            
+            // 如果已有图表，先销毁
+            if (myChart) {
+                myChart.destroy();
+            }
+            
+            // 准备数据点和颜色
+            const dataPoints = [];
+            const backgroundColors = [];
+            const borderColors = [];
+            const borderWidths = [];
+            
+            stockData.forEach(stock => {
+                // 计算气泡大小 (归一化为5-30范围)
+                let size = Math.abs(stock[bubbleSize] || 0) / maxBubbleValue * 25 + 5;
+                
+                // 气泡大小的最小值限制
+                if (isNaN(size) || size < 5) size = 5;
+                
+                // 检查是否是高亮的股票
+                const isHighlighted = highlightedStock && 
+                    ((highlightedStock.代码 && stock.代码 === highlightedStock.代码) || 
+                     (highlightedStock.名称 && stock.名称 === highlightedStock.名称));
+                
+                dataPoints.push({
+                    x: parseFloat((stock[xAxis] || 0).toString()),
+                    y: parseFloat((stock[yAxis] || 0).toString()),
+                    r: isHighlighted ? size * 1.3 : size,
+                    stock: stock,
+                    highlighted: isHighlighted
+                });
+                
+                // 设置颜色：高亮为红色，其他为渐变色
+                const h = (dataPoints.length * 137.5) % 360;
+                backgroundColors.push(isHighlighted ? 'rgba(255, 0, 0, 0.7)' : `hsla(${h}, 70%, 60%, 0.7)`);
+                borderColors.push(isHighlighted ? 'rgba(255, 0, 0, 1)' : 'rgba(255, 255, 255, 0.7)');
+                borderWidths.push(isHighlighted ? 2 : 1);
+            });
+            
+            // 创建新图表
+            myChart = new Chart(ctx, {
+                type: 'bubble',
+                data: {
+                    datasets: [{
+                        label: '股票数据',
+                        data: dataPoints,
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                        borderWidth: borderWidths
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: xAxis
+                            },
+                            grid: {
+                                display: true
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: yAxis
+                            },
+                            grid: {
+                                display: true
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const stock = context.raw.stock;
+                                    return [
+                                        `名称: ${stock.名称 || ''}`,
+                                        `代码: ${stock.代码 || ''}`,
+                                        `${xAxis}: ${typeof stock[xAxis] === 'number' ? stock[xAxis].toFixed(2) : (stock[xAxis] || 0)}`,
+                                        `${yAxis}: ${typeof stock[yAxis] === 'number' ? stock[yAxis].toFixed(2) : (stock[yAxis] || 0)}`,
+                                        `${bubbleSize}: ${typeof stock[bubbleSize] === 'number' ? stock[bubbleSize].toFixed(2) : (stock[bubbleSize] || 0)}`
+                                    ];
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: `知行AI 三维比价系统 (气泡大小表示${bubbleSize})`,
+                            font: {
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    animation: {
+                        duration: 500
+                    }
+                },
+                plugins: [{
+                    id: 'stockLabels',
+                    afterDatasetDraw: function(chart) {
+                        const ctx = chart.ctx;
+                        chart.data.datasets.forEach((dataset, i) => {
+                            const meta = chart.getDatasetMeta(i);
+                            meta.data.forEach((element, index) => {
+                                const data = dataPoints[index];
+                                const stock = data.stock;
+                                const position = element.getCenterPoint();
+                                
+                                // 根据是否高亮或是否显示所有标签决定是否显示标签
+                                if (showLabels || data.highlighted) {
+                                    // 设置文本样式
+                                    ctx.textAlign = 'center';
+                                    ctx.textBaseline = 'bottom';
+                                    
+                                    // 高亮标签使用更大更粗的字体
+                                    if (data.highlighted) {
+                                        ctx.font = 'bold 14px Arial';
+                                        ctx.fillStyle = '#ff0000';
+                                    } else {
+                                        ctx.font = '12px Arial';
+                                        ctx.fillStyle = '#333';
+                                    }
+                                    
+                                    // 绘制股票名称
+                                    ctx.fillText(stock.名称 || '', position.x, position.y - (data.r + 2));
+                                    
+                                    // 如果是高亮的，添加一个圆圈
+                                    if (data.highlighted) {
+                                        ctx.beginPath();
+                                        ctx.arc(position.x, position.y, data.r + 5, 0, Math.PI * 2);
+                                        ctx.strokeStyle = 'red';
+                                        ctx.lineWidth = 2;
+                                        ctx.stroke();
+                                    }
+                                }
+                            });
+                        });
+                    }
+                }]
+            });
+        }
+
+        // 对字符串百分比转换为数字的辅助函数
+        function parsePercentage(value) {
+            if (typeof value === 'string' && value.endsWith('%')) {
+                return parseFloat(value) / 100;
+            }
+            return parseFloat(value);
+        }
+    </script>
+</body>
+</html>
